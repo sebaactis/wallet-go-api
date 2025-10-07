@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 
 	"gorm.io/gorm"
 )
@@ -49,3 +50,5 @@ func (r *Repository) ExistsByEmail(ctx context.Context, email string) (bool, err
 func (r *Repository) Delete(ctx context.Context, id uint) error {
 	return r.db.WithContext(ctx).Delete(&User{}, id).Error
 }
+
+var ErrDuplicateEmail = errors.New("email already in use")

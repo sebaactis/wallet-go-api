@@ -15,8 +15,3 @@ type Account struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
-
-type AccountCreate struct {
-	UserID   uint   `json: "user_id`
-	Currency string `json: "currency"`
-}

@@ -31,7 +31,7 @@ func (s *Service) Create(ctx context.Context, user *UserCreate) (*User, error) {
 	}
 
 	if exists {
-		return nil, errors.New("email already used")
+		return nil, ErrDuplicateEmail
 	}
 
 	newUser := &User{
@@ -41,7 +41,7 @@ func (s *Service) Create(ctx context.Context, user *UserCreate) (*User, error) {
 
 	if err := s.repository.Create(ctx, newUser); err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			return nil, gorm.ErrDuplicatedKey
+			return nil, ErrDuplicateEmail
 		}
 
 		return nil, err

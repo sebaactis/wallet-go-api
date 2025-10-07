@@ -15,51 +15,10 @@ import (
 	"github.com/sebaactis/wallet-go-api/internal/platform/config"
 	"github.com/sebaactis/wallet-go-api/internal/platform/database"
 	"github.com/sebaactis/wallet-go-api/internal/user"
-	"gorm.io/gorm"
 )
-
-func probe(ctx context.Context, db *gorm.DB) {
-
-	userRepo := user.NewRepository(db)
-	accountRepo := account.NewRepository(db)
-	userService := user.NewService(userRepo)
-	aService := account.NewService(accountRepo)
-
-	userCreate := &user.UserCreate{
-		Name:  "Sebastian Actis",
-		Email: "sebaactis@gmail.com",
-	}
-
-	u, err := userService.Create(ctx, userCreate)
-	if err != nil {
-		log.Println("create user:", err)
-		return
-	}
-	log.Println("user id:", u.ID)
-
-	accountCreate := &account.AccountCreate{
-		UserID:   u.ID,
-		Currency: "ARS",
-	}
-
-	account, err := aService.Create(ctx, accountCreate)
-	if err != nil {
-		log.Println("create account:", err)
-		return
-	}
-	log.Println("account id:", account.ID, "currency:", account.Currency)
-
-	bal, err := aService.GetBalance(ctx, account.ID)
-	if err != nil {
-		log.Println("get balance:", err)
-		return
-	}
-	log.Println("balance:", bal)
-}
 
 func main() {
 	_ = godotenv.Load()
-
 	cfg := config.Load()
 
 	db, err := database.Open(cfg)
@@ -71,7 +30,25 @@ func main() {
 		log.Fatalf("migrate: %v", err)
 	}
 
-	r := httpx.NewRouter()
+	// Repositorios
+	userRepo := user.NewRepository(db)
+	accountRepo := account.NewRepository(db)
+
+	// Servicios
+	userService := user.NewService(userRepo)
+	accountService := account.NewService(accountRepo)
+
+	// Handlers
+
+	userHandler := user.NewHTTPHandler(userService)
+	accountHandler := account.NewHTTPHandler(accountService)
+
+	r := httpx.NewRouter(
+		httpx.Deps{
+			UserHandler:    userHandler,
+			AccountHandler: accountHandler,
+		},
+	)
 
 	srv := &http.Server{
 		Addr:         cfg.HTTPAddr,
@@ -88,8 +65,6 @@ func main() {
 		}
 
 	}()
-
-	probe(context.Background(), db)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

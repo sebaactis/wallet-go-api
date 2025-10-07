@@ -23,7 +23,7 @@ func NewService(repo *Repository) *Service {
 }
 
 
-func (s *Service) Create(ctx context.Context, accountCreate *AccountCreate) (*Account, error) {
+func (s *Service) Create(ctx context.Context, accountCreate *CreateAccountRequest) (*Account, error) {
 	accountCreate.Currency = strings.ToUpper(strings.TrimSpace(accountCreate.Currency))
 
 	if len(accountCreate.Currency) != 3 {
