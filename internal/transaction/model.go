@@ -9,7 +9,7 @@ import (
 type Transaction struct {
 	ID            uint            `json:"id" gorm:"primaryKey"`
 	Type          string          `json:"type" gorm:"size:20;not null"`
-	Reference     string          `json:"reference" gorm:"size:100;index"`
+	Reference     *string          `json:"reference" gorm:"size:100;index:idx_tx_ref,unique,where:reference IS NOT NULL"`
 	FromAccountID *uint           `json:"from_account_id"`
 	ToAccountID   *uint           `json:"to_account_id"`
 	FromAccount   *account.Account `json:"from_account" gorm:"foreignKey:FromAccountID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`

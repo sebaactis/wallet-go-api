@@ -15,6 +15,7 @@ import (
 	"github.com/sebaactis/wallet-go-api/internal/platform/config"
 	"github.com/sebaactis/wallet-go-api/internal/platform/database"
 	"github.com/sebaactis/wallet-go-api/internal/user"
+	"github.com/sebaactis/wallet-go-api/internal/wallet"
 )
 
 func main() {
@@ -37,16 +38,19 @@ func main() {
 	// Servicios
 	userService := user.NewService(userRepo)
 	accountService := account.NewService(accountRepo)
+	walletService := wallet.NewService(db)
 
 	// Handlers
 
 	userHandler := user.NewHTTPHandler(userService)
 	accountHandler := account.NewHTTPHandler(accountService)
+	walletHandler := wallet.NewHTTPHandler(walletService)
 
 	r := httpx.NewRouter(
 		httpx.Deps{
 			UserHandler:    userHandler,
 			AccountHandler: accountHandler,
+			WalletHandler:  walletHandler,
 		},
 	)
 

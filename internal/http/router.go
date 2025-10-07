@@ -8,11 +8,13 @@ import (
 	"github.com/sebaactis/wallet-go-api/internal/account"
 	"github.com/sebaactis/wallet-go-api/internal/health"
 	"github.com/sebaactis/wallet-go-api/internal/user"
+	"github.com/sebaactis/wallet-go-api/internal/wallet"
 )
 
 type Deps struct {
 	UserHandler    *user.HTTPHandler
 	AccountHandler *account.HTTPHandler
+	WalletHandler  *wallet.HTTPHandler
 }
 
 func NewRouter(d Deps) *chi.Mux {
@@ -30,6 +32,10 @@ func NewRouter(d Deps) *chi.Mux {
 
 		r.Post("/accounts", d.AccountHandler.Create)
 		r.Get("/accounts/{id}/balance", d.AccountHandler.GetBalance)
+
+		r.Post("/wallet/deposit", d.WalletHandler.Deposit)
+		r.Post("/wallet/withdraw", d.WalletHandler.Withdraw)
+		r.Post("/wallet/transfer", d.WalletHandler.Transfer)
 	})
 
 	return r
