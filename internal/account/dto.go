@@ -1,9 +1,8 @@
 package account
 
-
 type CreateAccountRequest struct {
-	UserID   uint   `json:"userId"`
-	Currency string `json:"currency"`
+	UserID   uint   `json:"userId"   validate:"required"`
+	Currency string `json:"currency" validate:"required,iso4217"`
 }
 
 type AccountResponse struct {

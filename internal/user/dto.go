@@ -1,8 +1,8 @@
 package user
 
 type UserCreate struct {
-	Name  string `json:"name" binding:"required"`
-	Email string `json:"email" binding:"required,email"`
+	Name  string `json:"name"  validate:"required,min=2,max=100"`
+	Email string `json:"email" validate:"required,min=2,max=100"`
 }
 
 type UserResponse struct {

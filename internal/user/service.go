@@ -5,24 +5,26 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/sebaactis/wallet-go-api/internal/validation"
 	"gorm.io/gorm"
 )
 
 type Service struct {
 	repository *Repository
+	validator  validation.StructValidator
 	db         *gorm.DB
 }
 
-func NewService(repository *Repository) *Service {
-	return &Service{repository: repository, db: repository.db}
+func NewService(repository *Repository, v validation.StructValidator) *Service {
+	return &Service{repository: repository, db: repository.db, validator: v}
 }
 
 func (s *Service) Create(ctx context.Context, user *UserCreate) (*User, error) {
 	name := strings.TrimSpace(user.Name)
 	email := strings.TrimSpace(user.Email)
 
-	if name == "" || email == "" {
-		return nil, errors.New("name and email are required")
+	if fields, ok := s.validator.ValidateStruct(user); !ok {
+		return nil, &validation.ValidationError{Fields: fields}
 	}
 
 	exists, err := s.repository.ExistsByEmail(ctx, email)
@@ -53,3 +55,4 @@ func (s *Service) Create(ctx context.Context, user *UserCreate) (*User, error) {
 func (s *Service) GetByID(ctx context.Context, id uint) (*User, error) {
 	return s.repository.FindByID(ctx, id)
 }
+

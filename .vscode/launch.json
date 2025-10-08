@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug API (no optimizations)",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/api",
+      "buildFlags": "-gcflags=all=-N -l",
+      "showLog": true,
+      "dlvFlags": ["--log"]
+    }
+  ]
+}

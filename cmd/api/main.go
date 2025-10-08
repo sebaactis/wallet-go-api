@@ -15,6 +15,7 @@ import (
 	"github.com/sebaactis/wallet-go-api/internal/platform/config"
 	"github.com/sebaactis/wallet-go-api/internal/platform/database"
 	"github.com/sebaactis/wallet-go-api/internal/user"
+	"github.com/sebaactis/wallet-go-api/internal/validation"
 	"github.com/sebaactis/wallet-go-api/internal/wallet"
 )
 
@@ -31,12 +32,15 @@ func main() {
 		log.Fatalf("migrate: %v", err)
 	}
 
+	validator := validation.NewValidator()
+	rateLimiter := httpx.NewRateLimiter(10, time.Minute*1)
+
 	// Repositorios
 	userRepo := user.NewRepository(db)
 	accountRepo := account.NewRepository(db)
 
 	// Servicios
-	userService := user.NewService(userRepo)
+	userService := user.NewService(userRepo, validator)
 	accountService := account.NewService(accountRepo)
 	walletService := wallet.NewService(db)
 
@@ -51,6 +55,8 @@ func main() {
 			UserHandler:    userHandler,
 			AccountHandler: accountHandler,
 			WalletHandler:  walletHandler,
+			Validator:      validator,
+			RateLimiter:    rateLimiter,
 		},
 	)
 

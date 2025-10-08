@@ -1,7 +1,6 @@
-package httpx
+package httpmw
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"time"
@@ -18,13 +17,11 @@ func JSONContentType() func(http.Handler) http.Handler {
 
 func Logger() func(http.Handler) http.Handler {
 	logger := slog.Default()
-
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-
 			next.ServeHTTP(w, r)
-			logger.Info("Request",
+			logger.Info("request",
 				"method", r.Method,
 				"path", r.URL.Path,
 				"duration", time.Since(start).String(),
@@ -34,13 +31,8 @@ func Logger() func(http.Handler) http.Handler {
 	}
 }
 
-func Timeout(t time.Duration) func(http.Handler) http.Handler {
+func Timeout(d time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, cancel := context.WithTimeout(r.Context(), t)
-			defer cancel()
-
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
+		return http.TimeoutHandler(next, d, `{"error":"timeout"}`)
 	}
 }

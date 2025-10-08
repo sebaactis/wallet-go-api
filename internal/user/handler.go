@@ -2,11 +2,12 @@ package user
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sebaactis/wallet-go-api/internal/httputil"
+	"github.com/sebaactis/wallet-go-api/internal/validation"
 )
 
 type HTTPHandler struct {
@@ -31,14 +32,9 @@ func (h *HTTPHandler) Create(w http.ResponseWriter, r *http.Request) {
 	u, err := h.service.Create(r.Context(), &req)
 
 	if err != nil {
-		// Mapeo de errores de dominio a HTTP
-		switch {
-		case errors.Is(err, ErrDuplicateEmail):
-			http.Error(w, `{"error":"email already in use"}`, http.StatusConflict)
-		default:
-			http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
+		if fields, ok := validation.AsValidationError(err); ok {
+			httputil.WriteError(w, http.StatusBadRequest, "validation error", fields)
 		}
-		return
 	}
 
 	w.WriteHeader(http.StatusCreated)

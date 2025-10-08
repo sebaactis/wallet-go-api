@@ -7,7 +7,9 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/sebaactis/wallet-go-api/internal/account"
 	"github.com/sebaactis/wallet-go-api/internal/health"
+	"github.com/sebaactis/wallet-go-api/internal/httpmw"
 	"github.com/sebaactis/wallet-go-api/internal/user"
+	"github.com/sebaactis/wallet-go-api/internal/validation"
 	"github.com/sebaactis/wallet-go-api/internal/wallet"
 )
 
@@ -15,13 +17,19 @@ type Deps struct {
 	UserHandler    *user.HTTPHandler
 	AccountHandler *account.HTTPHandler
 	WalletHandler  *wallet.HTTPHandler
+	Validator      *validation.Validator
+	RateLimiter    *RateLimiter
 }
 
 func NewRouter(d Deps) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(chimw.RequestID, chimw.RealIP, chimw.Recoverer)
-	r.Use(Logger(), JSONContentType(), Timeout(8*time.Second))
+	r.Use(httpmw.Logger(), httpmw.JSONContentType(), httpmw.Timeout(8*time.Second))
+
+	if d.RateLimiter != nil {
+		r.Use(d.RateLimiter.Middleware())
+	}
 
 	hh := health.New()
 	r.Get("/health", hh.Liveness)
