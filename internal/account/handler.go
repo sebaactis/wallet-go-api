@@ -7,6 +7,8 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sebaactis/wallet-go-api/internal/httpmw"
+	"github.com/sebaactis/wallet-go-api/internal/httputil"
 )
 
 type HTTPHandler struct {
@@ -24,6 +26,16 @@ func (h *HTTPHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error": "invalid request"}`, http.StatusBadRequest)
 		return
+	}
+
+	authUser, ok := httpmw.UserIDFromContext(r.Context())
+	if !ok {
+		httputil.WriteError(w, http.StatusBadRequest, "unauthorized", nil)
+		return
+	}
+
+	if req.UserID != authUser {
+		httputil.WriteError(w, http.StatusForbidden, "forbidden", nil); return
 	}
 
 	account, err := h.service.Create(r.Context(), &req)

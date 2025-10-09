@@ -2,6 +2,7 @@ package user
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -34,12 +35,22 @@ func (h *HTTPHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if fields, ok := validation.AsValidationError(err); ok {
 			httputil.WriteError(w, http.StatusBadRequest, "validation error", fields)
+			return 
 		}
+		
+		// Maneja el error de email duplicado
+		if errors.Is(err, ErrDuplicateEmail) {
+			httputil.WriteError(w, http.StatusConflict, "email already exists", nil)
+			return 
+		}
+		
+		// Error genérico
+		httputil.WriteError(w, http.StatusInternalServerError, "internal server error", nil)
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(ToResponse(u))
-
 }
 
 func (h *HTTPHandler) GetByID(w http.ResponseWriter, r *http.Request) {

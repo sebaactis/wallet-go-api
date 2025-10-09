@@ -11,7 +11,9 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/sebaactis/wallet-go-api/internal/account"
+	"github.com/sebaactis/wallet-go-api/internal/auth"
 	httpx "github.com/sebaactis/wallet-go-api/internal/http"
+	"github.com/sebaactis/wallet-go-api/internal/httpmw"
 	"github.com/sebaactis/wallet-go-api/internal/platform/config"
 	"github.com/sebaactis/wallet-go-api/internal/platform/database"
 	"github.com/sebaactis/wallet-go-api/internal/user"
@@ -33,7 +35,8 @@ func main() {
 	}
 
 	validator := validation.NewValidator()
-	rateLimiter := httpx.NewRateLimiter(10, time.Minute*1)
+	rateLimiter := httpmw.NewRateLimiter(10, time.Minute*1)
+	jwt := auth.NewJWT()
 
 	// Repositorios
 	userRepo := user.NewRepository(db)
@@ -49,6 +52,8 @@ func main() {
 	userHandler := user.NewHTTPHandler(userService)
 	accountHandler := account.NewHTTPHandler(accountService)
 	walletHandler := wallet.NewHTTPHandler(walletService)
+	authHandler := auth.NewHTTPHandler(userService, jwt)
+	authMiddleware := httpmw.NewAuthMiddleware(jwt)
 
 	r := httpx.NewRouter(
 		httpx.Deps{
@@ -57,6 +62,8 @@ func main() {
 			WalletHandler:  walletHandler,
 			Validator:      validator,
 			RateLimiter:    rateLimiter,
+			AuthHandler:    authHandler,
+			AuthMiddleWare: authMiddleware,
 		},
 	)
 

@@ -1,13 +1,19 @@
 package wallet
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
+
+	"github.com/sebaactis/wallet-go-api/internal/account"
+	"github.com/sebaactis/wallet-go-api/internal/httpmw"
+	"github.com/sebaactis/wallet-go-api/internal/httputil"
 )
 
 type HTTPHandler struct {
 	service *Service
+	accrepo *account.Repository
 }
 
 func NewHTTPHandler(service *Service) *HTTPHandler { return &HTTPHandler{service: service} }
@@ -16,12 +22,38 @@ func idemRef(r *http.Request) string {
 	return r.Header.Get("Idempotency-Key")
 }
 
+func (h *HTTPHandler) ensureOwner(ctx context.Context, accountID, userID uint) error {
+	acc, err := h.accrepo.FindByID(ctx, accountID)
+	if err != nil {
+		return err
+	}
+	if acc.UserID != userID {
+		return errors.New("forbidden")
+	}
+	return nil
+}
+
 // POST /v1/wallet/deposit
 func (h *HTTPHandler) Deposit(w http.ResponseWriter, r *http.Request) {
 	var req DepositRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+		return
+	}
+
+	authUser, ok := httpmw.UserIDFromContext(r.Context())
+	if !ok {
+		httputil.WriteError(w, http.StatusUnauthorized, "unauthorized", nil)
+		return
+	}
+
+	if err := h.ensureOwner(r.Context(), req.AccountID, authUser); err != nil {
+		if err.Error() == "forbidden" {
+			httputil.WriteError(w, http.StatusForbidden, "forbidden", nil)
+			return
+		}
+		httputil.WriteError(w, http.StatusNotFound, "account not found", nil)
 		return
 	}
 
@@ -43,6 +75,21 @@ func (h *HTTPHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	authUser, ok := httpmw.UserIDFromContext(r.Context())
+	if !ok {
+		httputil.WriteError(w, http.StatusUnauthorized, "unauthorized", nil)
+		return
+	}
+
+	if err := h.ensureOwner(r.Context(), req.AccountID, authUser); err != nil {
+		if err.Error() == "forbidden" {
+			httputil.WriteError(w, http.StatusForbidden, "forbidden", nil)
+			return
+		}
+		httputil.WriteError(w, http.StatusNotFound, "account not found", nil)
+		return
+	}
+
 	t, err := h.service.Withdraw(r.Context(), &req, idemRef(r))
 
 	if err != nil {
@@ -59,6 +106,21 @@ func (h *HTTPHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid json"}`, http.StatusBadRequest)
+		return
+	}
+
+	authUser, ok := httpmw.UserIDFromContext(r.Context())
+	if !ok {
+		httputil.WriteError(w, http.StatusUnauthorized, "unauthorized", nil)
+		return
+	}
+
+	if err := h.ensureOwner(r.Context(), req.FromAccountID, authUser); err != nil {
+		if err.Error() == "forbidden" {
+			httputil.WriteError(w, http.StatusForbidden, "forbidden", nil)
+			return
+		}
+		httputil.WriteError(w, http.StatusNotFound, "account not found", nil)
 		return
 	}
 

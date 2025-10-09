@@ -6,6 +6,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/sebaactis/wallet-go-api/internal/account"
+	"github.com/sebaactis/wallet-go-api/internal/auth"
 	"github.com/sebaactis/wallet-go-api/internal/health"
 	"github.com/sebaactis/wallet-go-api/internal/httpmw"
 	"github.com/sebaactis/wallet-go-api/internal/user"
@@ -18,7 +19,9 @@ type Deps struct {
 	AccountHandler *account.HTTPHandler
 	WalletHandler  *wallet.HTTPHandler
 	Validator      *validation.Validator
-	RateLimiter    *RateLimiter
+	RateLimiter    *httpmw.RateLimiter
+	AuthHandler    *auth.HTTPHandler
+	AuthMiddleWare *httpmw.AuthMiddleware
 }
 
 func NewRouter(d Deps) *chi.Mux {
@@ -36,14 +39,20 @@ func NewRouter(d Deps) *chi.Mux {
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Post("/users", d.UserHandler.Create)
-		r.Get("/users/{id}", d.UserHandler.GetByID)
+		r.Post("/auth/token", d.AuthHandler.Token)
 
-		r.Post("/accounts", d.AccountHandler.Create)
-		r.Get("/accounts/{id}/balance", d.AccountHandler.GetBalance)
+		// Rutas protegidas:
+		r.Group(func(pr chi.Router) {
+			pr.Use(d.AuthMiddleWare.RequireAuth())
 
-		r.Post("/wallet/deposit", d.WalletHandler.Deposit)
-		r.Post("/wallet/withdraw", d.WalletHandler.Withdraw)
-		r.Post("/wallet/transfer", d.WalletHandler.Transfer)
+			pr.Get("/users/{id}", d.UserHandler.GetByID)
+			pr.Post("/accounts", d.AccountHandler.Create)
+			pr.Get("/accounts/{id}/balance", d.AccountHandler.GetBalance)
+
+			pr.Post("/wallet/deposit", d.WalletHandler.Deposit)
+			pr.Post("/wallet/withdraw", d.WalletHandler.Withdraw)
+			pr.Post("/wallet/transfer", d.WalletHandler.Transfer)
+		})
 	})
 
 	return r

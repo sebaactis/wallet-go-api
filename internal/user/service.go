@@ -56,3 +56,6 @@ func (s *Service) GetByID(ctx context.Context, id uint) (*User, error) {
 	return s.repository.FindByID(ctx, id)
 }
 
+func (s *Service) GetByEmail(ctx context.Context, email string) (*User, error) {
+	return s.repository.FindByEmail(ctx, email)
+}
