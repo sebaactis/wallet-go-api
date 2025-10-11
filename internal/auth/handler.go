@@ -1,7 +1,10 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -23,58 +26,25 @@ func NewHTTPHandler(users *user.Service, jwt *JWT, validator validation.StructVa
 }
 
 func (h *HTTPHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req LoginRequest
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		httputil.WriteError(w, http.StatusBadRequest, "invalid json", nil)
-		return
-	}
-
-	email := strings.ToLower(strings.TrimSpace(req.Email))
-
-	if fields, ok := h.validator.ValidateStruct(&req); !ok {
-		httputil.WriteError(w, http.StatusBadRequest, "Validation error", fields)
-		return
-	}
-
-	u, err := h.users.GetByEmail(r.Context(), email)
-
-	if u.Locked_until.After(time.Now()) {
-		httputil.WriteError(w, http.StatusUnauthorized, "user locked", nil)
-		return
-	}
-
+	req, err := h.parseLoginRequest(r)
 	if err != nil {
-		httputil.WriteError(w, http.StatusNotFound, "user not found", nil)
+		httputil.WriteError(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(req.Password)); err != nil {
-		httputil.WriteError(w, http.StatusUnauthorized, "invalid credentials", nil)
-		h.users.IncrementLoginAttempt(r.Context(), u.ID)
-		return
-	}
-
-	token, err := h.jwt.Sign(u.ID, u.Email, TokenTypeAccess)
-
+	user, err := h.authenticateUser(r.Context(), req)
 	if err != nil {
-		httputil.WriteError(w, http.StatusInternalServerError, "cannot sign token", nil)
+		h.handleLoginError(w, r.Context(), err, user)
 		return
 	}
 
-	refreshToken, err := h.jwt.Sign(u.ID, u.Email, TokenTypeRefresh)
-
+	tokens, err := h.generateTokens(user)
 	if err != nil {
-		httputil.WriteError(w, http.StatusInternalServerError, "cannot sign token", nil)
+		httputil.WriteError(w, http.StatusInternalServerError, "cannot generate tokens", nil)
 		return
 	}
 
-	json.NewEncoder(w).Encode(LoginResponse{
-		Email:        u.Email,
-		Name:         u.Name,
-		Token:        token,
-		RefreshToken: refreshToken,
-	})
+	h.respondWithTokens(w, user, tokens)
 }
 
 func (h *HTTPHandler) UnlockUser(w http.ResponseWriter, r *http.Request) {
@@ -89,3 +59,103 @@ func (h *HTTPHandler) UnlockUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode("User unlocked")
 }
+
+
+
+
+
+
+// === MÉTODOS PRIVADOS ===
+
+
+func (h *HTTPHandler) parseLoginRequest(r *http.Request) (*LoginRequest, error) {
+	var req LoginRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, errors.New("invalid json")
+	}
+
+	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+
+	if fields, ok := h.validator.ValidateStruct(&req); !ok {
+		return nil, fmt.Errorf("validation error: %v", fields)
+	}
+
+	return &req, nil
+}
+
+func (h *HTTPHandler) authenticateUser(ctx context.Context, req *LoginRequest) (*user.User, error) {
+
+	user, err := h.users.GetByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	if user.Locked_until.After(time.Now()) {
+		return user, ErrAccountLocked
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		return user, ErrInvalidCredentials
+	}
+
+	return user, nil
+}
+
+func (h *HTTPHandler) generateTokens(user *user.User) (*TokenPair, error) {
+	accessToken, err := h.jwt.Sign(user.ID, user.Email, TokenTypeAccess)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := h.jwt.Sign(user.ID, user.Email, TokenTypeRefresh)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TokenPair{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (h *HTTPHandler) handleLoginError(w http.ResponseWriter, ctx context.Context, err error, user *user.User) {
+	switch err {
+	case ErrAccountLocked:
+		httputil.WriteError(w, http.StatusLocked, "account temporarily locked", nil)
+
+	case ErrInvalidCredentials:
+		httputil.WriteError(w, http.StatusUnauthorized, "invalid credentials", nil)
+
+		// Incrementar intentos solo si el usuario existe
+		if user != nil {
+			h.users.IncrementLoginAttempt(ctx, user.ID)
+		}
+
+	default:
+		httputil.WriteError(w, http.StatusInternalServerError, "internal error", nil)
+	}
+}
+
+func (h *HTTPHandler) respondWithTokens(w http.ResponseWriter, user *user.User, tokens *TokenPair) {
+	response := LoginResponse{
+		Email:        user.Email,
+		Name:         user.Name,
+		Token:        tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+type TokenPair struct {
+	AccessToken  string
+	RefreshToken string
+}
+
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrAccountLocked      = errors.New("account locked")
+)
