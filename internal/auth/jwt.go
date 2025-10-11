@@ -10,8 +10,9 @@ import (
 )
 
 type JWT struct {
-	secret []byte
-	ttl    time.Duration
+	secret     []byte
+	ttlNormal  time.Duration
+	ttlRefresh time.Duration
 }
 
 func NewJWT() *JWT {
@@ -22,6 +23,7 @@ func NewJWT() *JWT {
 	}
 
 	ttlMin := 60
+	ttlMinRefresh := 1440
 
 	if s := os.Getenv("JWT_TTL_MINUTES"); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n > 0 {
@@ -29,17 +31,17 @@ func NewJWT() *JWT {
 		}
 	}
 
-	return &JWT{secret: []byte(sec), ttl: time.Duration(ttlMin) * time.Minute}
+	return &JWT{secret: []byte(sec), ttlNormal: time.Duration(ttlMin) * time.Minute, ttlRefresh: time.Duration(ttlMinRefresh) * time.Minute}
 }
 
-func (j *JWT) Sign(userID uint, email string) (string, error) {
+func (j *JWT) Sign(userID uint, email string, tokenType TokenType) (string, error) {
 	now := time.Now()
 
 	claims := jwt.MapClaims{
 		"sub":   userID,
 		"email": email,
 		"iat":   now.Unix(),
-		"exp":   now.Add(j.ttl).Unix(),
+		"exp":   j.getExpiration(tokenType, now),
 	}
 
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -75,4 +77,11 @@ func (j *JWT) Parse(token string) (uint, string, error) {
 	email, _ := claims["email"].(string)
 
 	return uint(subF), email, nil
+}
+
+func (j *JWT) getExpiration(tokenType TokenType, now time.Time) int64 {
+	if tokenType == TokenTypeAccess {
+		return now.Add(j.ttlNormal).Unix()
+	}
+	return now.Add(j.ttlRefresh).Unix()
 }

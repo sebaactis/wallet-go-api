@@ -35,16 +35,14 @@ func (h *HTTPHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if fields, ok := validation.AsValidationError(err); ok {
 			httputil.WriteError(w, http.StatusBadRequest, "validation error", fields)
-			return 
+			return
 		}
-		
-		// Maneja el error de email duplicado
+
 		if errors.Is(err, ErrDuplicateEmail) {
 			httputil.WriteError(w, http.StatusConflict, "email already exists", nil)
-			return 
+			return
 		}
-		
-		// Error genérico
+
 		httputil.WriteError(w, http.StatusInternalServerError, "internal server error", nil)
 		return
 	}
@@ -71,4 +69,15 @@ func (h *HTTPHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(ToResponse(u))
+}
+
+func (h *HTTPHandler) FindAll(w http.ResponseWriter, r *http.Request) {
+	users, err := h.service.FindAll(r.Context())
+
+	if err != nil {
+		httputil.WriteError(w, http.StatusNotFound, "users not found", nil)
+		return
+	}
+
+	json.NewEncoder(w).Encode(ToResponseMany(users))
 }

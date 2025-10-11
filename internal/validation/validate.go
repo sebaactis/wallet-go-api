@@ -45,6 +45,8 @@ func (val *Validator) ValidateStruct(dst any) (map[string]string, bool) {
 				fieldErrs[field] = "must be 3-letter ISO code"
 			case "nefield":
 				fieldErrs[field] = "must be different from " + fe.Param()
+			case "eqfield":
+				fieldErrs[field] = "must be equal to " + fe.Param()
 			default:
 				fieldErrs[field] = strings.ToLower(fe.Tag())
 			}
@@ -53,7 +55,6 @@ func (val *Validator) ValidateStruct(dst any) (map[string]string, bool) {
 	}
 	return nil, true
 }
-
 
 func (val *Validator) BindAndValidateJSON(r *http.Request, dst any) (map[string]string, bool) {
 	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {

@@ -52,7 +52,7 @@ func main() {
 	userHandler := user.NewHTTPHandler(userService)
 	accountHandler := account.NewHTTPHandler(accountService)
 	walletHandler := wallet.NewHTTPHandler(walletService)
-	authHandler := auth.NewHTTPHandler(userService, jwt)
+	authHandler := auth.NewHTTPHandler(userService, jwt, validator)
 	authMiddleware := httpmw.NewAuthMiddleware(jwt)
 
 	r := httpx.NewRouter(

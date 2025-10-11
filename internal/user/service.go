@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sebaactis/wallet-go-api/internal/validation"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -22,6 +23,11 @@ func NewService(repository *Repository, v validation.StructValidator) *Service {
 func (s *Service) Create(ctx context.Context, user *UserCreate) (*User, error) {
 	name := strings.TrimSpace(user.Name)
 	email := strings.TrimSpace(user.Email)
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(strings.TrimSpace(user.Password)), bcrypt.DefaultCost)
+
+	if err != nil {
+		return nil, err
+	}
 
 	if fields, ok := s.validator.ValidateStruct(user); !ok {
 		return nil, &validation.ValidationError{Fields: fields}
@@ -37,8 +43,9 @@ func (s *Service) Create(ctx context.Context, user *UserCreate) (*User, error) {
 	}
 
 	newUser := &User{
-		Name:  name,
-		Email: email,
+		Name:     name,
+		Email:    email,
+		Password: string(passwordHash),
 	}
 
 	if err := s.repository.Create(ctx, newUser); err != nil {
@@ -58,4 +65,16 @@ func (s *Service) GetByID(ctx context.Context, id uint) (*User, error) {
 
 func (s *Service) GetByEmail(ctx context.Context, email string) (*User, error) {
 	return s.repository.FindByEmail(ctx, email)
+}
+
+func (s *Service) FindAll(ctx context.Context) ([]*User, error) {
+	return s.repository.FindAll(ctx)
+}
+
+func (s *Service) IncrementLoginAttempt(ctx context.Context, id uint) (int, error) {
+	return s.repository.IncrementLoginAttempt(ctx, id)
+}
+
+func (s *Service) UnlockUser(ctx context.Context, id uint) error {
+	return s.repository.UnlockUser(ctx, id)
 }

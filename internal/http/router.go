@@ -38,8 +38,10 @@ func NewRouter(d Deps) *chi.Mux {
 	r.Get("/health", hh.Liveness)
 
 	r.Route("/v1", func(r chi.Router) {
-		r.Post("/users", d.UserHandler.Create)
-		r.Post("/auth/token", d.AuthHandler.Token)
+		r.Get("/users", d.UserHandler.FindAll)
+		r.Post("/register", d.UserHandler.Create)
+		r.Post("/login", d.AuthHandler.Login)
+		r.Post("/unlock", d.AuthHandler.UnlockUser)
 
 		// Rutas protegidas:
 		r.Group(func(pr chi.Router) {
