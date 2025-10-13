@@ -9,20 +9,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sebaactis/wallet-go-api/internal/entities/token"
+	"github.com/sebaactis/wallet-go-api/internal/entities/user"
 	"github.com/sebaactis/wallet-go-api/internal/httputil"
-	"github.com/sebaactis/wallet-go-api/internal/user"
 	"github.com/sebaactis/wallet-go-api/internal/validation"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type HTTPHandler struct {
 	users     *user.Service
+	tokens    *token.Service
 	jwt       *JWT
 	validator validation.StructValidator
 }
 
-func NewHTTPHandler(users *user.Service, jwt *JWT, validator validation.StructValidator) *HTTPHandler {
-	return &HTTPHandler{users: users, jwt: jwt, validator: validator}
+func NewHTTPHandler(users *user.Service, tokens *token.Service, jwt *JWT, validator validation.StructValidator) *HTTPHandler {
+	return &HTTPHandler{users: users, tokens: tokens, jwt: jwt, validator: validator}
 }
 
 func (h *HTTPHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +40,7 @@ func (h *HTTPHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokens, err := h.generateTokens(user)
+	tokens, err := h.generateTokens(r.Context(), user)
 	if err != nil {
 		httputil.WriteError(w, http.StatusInternalServerError, "cannot generate tokens", nil)
 		return
@@ -60,13 +62,7 @@ func (h *HTTPHandler) UnlockUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode("User unlocked")
 }
 
-
-
-
-
-
 // === MÉTODOS PRIVADOS ===
-
 
 func (h *HTTPHandler) parseLoginRequest(r *http.Request) (*LoginRequest, error) {
 	var req LoginRequest
@@ -102,7 +98,7 @@ func (h *HTTPHandler) authenticateUser(ctx context.Context, req *LoginRequest) (
 	return user, nil
 }
 
-func (h *HTTPHandler) generateTokens(user *user.User) (*TokenPair, error) {
+func (h *HTTPHandler) generateTokens(ctx context.Context, user *user.User) (*TokenPair, error) {
 	accessToken, err := h.jwt.Sign(user.ID, user.Email, TokenTypeAccess)
 	if err != nil {
 		return nil, err
@@ -110,6 +106,20 @@ func (h *HTTPHandler) generateTokens(user *user.User) (*TokenPair, error) {
 
 	refreshToken, err := h.jwt.Sign(user.ID, user.Email, TokenTypeRefresh)
 	if err != nil {
+		return nil, err
+	}
+
+	if _, err = h.tokens.Create(ctx, &token.TokenRequest{
+		TokenType: string(TokenTypeAccess),
+		Token:     accessToken,
+	}); err != nil {
+		return nil, err
+	}
+
+	if _, err = h.tokens.Create(ctx, &token.TokenRequest{
+		TokenType: string(TokenTypeRefresh),
+		Token:     accessToken,
+	}); err != nil {
 		return nil, err
 	}
 

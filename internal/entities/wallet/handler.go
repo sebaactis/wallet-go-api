@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/sebaactis/wallet-go-api/internal/account"
+	"github.com/sebaactis/wallet-go-api/internal/entities/account"
 	"github.com/sebaactis/wallet-go-api/internal/httpmw"
 	"github.com/sebaactis/wallet-go-api/internal/httputil"
 )

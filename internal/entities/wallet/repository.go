@@ -3,9 +3,9 @@ package wallet
 import (
 	"context"
 
-	"github.com/sebaactis/wallet-go-api/internal/account"
-	ledger "github.com/sebaactis/wallet-go-api/internal/legder"
-	"github.com/sebaactis/wallet-go-api/internal/transaction"
+	"github.com/sebaactis/wallet-go-api/internal/entities/account"
+	ledger "github.com/sebaactis/wallet-go-api/internal/entities/legder"
+	"github.com/sebaactis/wallet-go-api/internal/entities/transaction"
 	"gorm.io/gorm"
 )
 

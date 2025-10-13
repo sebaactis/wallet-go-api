@@ -5,8 +5,8 @@ import (
 	"errors"
 	"strings"
 
-	ledger "github.com/sebaactis/wallet-go-api/internal/legder"
-	"github.com/sebaactis/wallet-go-api/internal/transaction"
+	ledger "github.com/sebaactis/wallet-go-api/internal/entities/legder"
+	"github.com/sebaactis/wallet-go-api/internal/entities/transaction"
 	"gorm.io/gorm"
 )
 

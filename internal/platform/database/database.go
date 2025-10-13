@@ -3,11 +3,12 @@ package database
 import (
 	"fmt"
 
-	"github.com/sebaactis/wallet-go-api/internal/account"
-	ledger "github.com/sebaactis/wallet-go-api/internal/legder"
+	"github.com/sebaactis/wallet-go-api/internal/entities/account"
+	ledger "github.com/sebaactis/wallet-go-api/internal/entities/legder"
+	"github.com/sebaactis/wallet-go-api/internal/entities/token"
+	"github.com/sebaactis/wallet-go-api/internal/entities/transaction"
+	"github.com/sebaactis/wallet-go-api/internal/entities/user"
 	"github.com/sebaactis/wallet-go-api/internal/platform/config"
-	"github.com/sebaactis/wallet-go-api/internal/transaction"
-	"github.com/sebaactis/wallet-go-api/internal/user"
 
 	// sqlite original de GORM (COMÉNTALO si pasas a pure Go)
 	// "gorm.io/driver/sqlite"
@@ -35,5 +36,6 @@ func Migrate(db *gorm.DB) error {
 		&account.Account{},
 		&transaction.Transaction{},
 		&ledger.LedgerEntry{},
+		&token.Token{},
 	)
 }

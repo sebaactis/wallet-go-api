@@ -3,8 +3,8 @@ package ledger
 import (
 	"time"
 
-	"github.com/sebaactis/wallet-go-api/internal/account"
-	"github.com/sebaactis/wallet-go-api/internal/transaction"
+	"github.com/sebaactis/wallet-go-api/internal/entities/account"
+	"github.com/sebaactis/wallet-go-api/internal/entities/transaction"
 )
 
 type LedgerEntry struct {

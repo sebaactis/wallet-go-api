@@ -5,13 +5,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
-	"github.com/sebaactis/wallet-go-api/internal/account"
 	"github.com/sebaactis/wallet-go-api/internal/auth"
+	"github.com/sebaactis/wallet-go-api/internal/entities/account"
+	"github.com/sebaactis/wallet-go-api/internal/entities/token"
+	"github.com/sebaactis/wallet-go-api/internal/entities/user"
+	"github.com/sebaactis/wallet-go-api/internal/entities/wallet"
 	"github.com/sebaactis/wallet-go-api/internal/health"
 	"github.com/sebaactis/wallet-go-api/internal/httpmw"
-	"github.com/sebaactis/wallet-go-api/internal/user"
 	"github.com/sebaactis/wallet-go-api/internal/validation"
-	"github.com/sebaactis/wallet-go-api/internal/wallet"
 )
 
 type Deps struct {
@@ -22,6 +23,7 @@ type Deps struct {
 	RateLimiter    *httpmw.RateLimiter
 	AuthHandler    *auth.HTTPHandler
 	AuthMiddleWare *httpmw.AuthMiddleware
+	TokensHandler *token.HTTPHandler
 }
 
 func NewRouter(d Deps) *chi.Mux {
@@ -42,6 +44,7 @@ func NewRouter(d Deps) *chi.Mux {
 		r.Post("/register", d.UserHandler.Create)
 		r.Post("/login", d.AuthHandler.Login)
 		r.Post("/unlock", d.AuthHandler.UnlockUser)
+		r.Get("/tokens", d.TokensHandler.GetAll)
 
 		// Rutas protegidas:
 		r.Group(func(pr chi.Router) {

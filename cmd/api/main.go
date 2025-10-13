@@ -10,15 +10,16 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/sebaactis/wallet-go-api/internal/account"
 	"github.com/sebaactis/wallet-go-api/internal/auth"
+	"github.com/sebaactis/wallet-go-api/internal/entities/account"
+	"github.com/sebaactis/wallet-go-api/internal/entities/token"
+	"github.com/sebaactis/wallet-go-api/internal/entities/user"
+	"github.com/sebaactis/wallet-go-api/internal/entities/wallet"
 	httpx "github.com/sebaactis/wallet-go-api/internal/http"
 	"github.com/sebaactis/wallet-go-api/internal/httpmw"
 	"github.com/sebaactis/wallet-go-api/internal/platform/config"
 	"github.com/sebaactis/wallet-go-api/internal/platform/database"
-	"github.com/sebaactis/wallet-go-api/internal/user"
 	"github.com/sebaactis/wallet-go-api/internal/validation"
-	"github.com/sebaactis/wallet-go-api/internal/wallet"
 )
 
 func main() {
@@ -41,18 +42,21 @@ func main() {
 	// Repositorios
 	userRepo := user.NewRepository(db)
 	accountRepo := account.NewRepository(db)
+	tokenRepo := token.NewRepository(db)
 
 	// Servicios
 	userService := user.NewService(userRepo, validator)
 	accountService := account.NewService(accountRepo)
 	walletService := wallet.NewService(db)
+	tokenService := token.NewService(tokenRepo, validator)
 
 	// Handlers
 
 	userHandler := user.NewHTTPHandler(userService)
 	accountHandler := account.NewHTTPHandler(accountService)
 	walletHandler := wallet.NewHTTPHandler(walletService)
-	authHandler := auth.NewHTTPHandler(userService, jwt, validator)
+	authHandler := auth.NewHTTPHandler(userService, tokenService,jwt, validator)
+	tokenHandler := token.NewHTTPHandler(tokenService)
 	authMiddleware := httpmw.NewAuthMiddleware(jwt)
 
 	r := httpx.NewRouter(
@@ -64,6 +68,7 @@ func main() {
 			RateLimiter:    rateLimiter,
 			AuthHandler:    authHandler,
 			AuthMiddleWare: authMiddleware,
+			TokensHandler: tokenHandler,
 		},
 	)
 

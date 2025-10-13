@@ -3,7 +3,7 @@ package transaction
 import (
 	"time"
 
-	"github.com/sebaactis/wallet-go-api/internal/account"
+	"github.com/sebaactis/wallet-go-api/internal/entities/account"
 )
 
 type Transaction struct {
