@@ -3,9 +3,9 @@ package httpmw
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/sebaactis/wallet-go-api/internal/auth"
+	"github.com/sebaactis/wallet-go-api/internal/entities/user"
 	"github.com/sebaactis/wallet-go-api/internal/httputil"
 )
 
@@ -24,30 +24,65 @@ func UserIDFromContext(ctx context.Context) (uint, bool) {
 }
 
 type AuthMiddleware struct {
-	jwt *auth.JWT
+	jwt         *auth.JWT
+	userService *user.Service
 }
 
-func NewAuthMiddleware(jwt *auth.JWT) *AuthMiddleware {
-	return &AuthMiddleware{jwt: jwt}
+func NewAuthMiddleware(jwt *auth.JWT, userService *user.Service) *AuthMiddleware {
+	return &AuthMiddleware{jwt: jwt, userService: userService}
 }
 
 func (a *AuthMiddleware) RequireAuth() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-			h := r.Header.Get("Authorization")
-			if !strings.HasPrefix(strings.ToLower(h), "bearer ") {
-				httputil.WriteError(w, http.StatusUnauthorized, "missing bearer token", nil)
-				return
+			accessCookie, err := r.Cookie("accessToken")
+			
+			if err == nil {
+				userID, _, tokenType, parseErr := a.jwt.Parse(accessCookie.Value)
+				
+				if parseErr == nil && tokenType == auth.TokenTypeAccess {
+					ctx := context.WithValue(r.Context(), ctxUserID, userID)
+					next.ServeHTTP(w, r.WithContext(ctx))
+					return
+				}
 			}
-			tok := strings.TrimSpace(h[len("Bearer "):])
-			userID, _, err := a.jwt.Parse(tok)
+			
+			refreshCookie, err := r.Cookie("refreshToken")
 			if err != nil {
-				httputil.WriteError(w, http.StatusUnauthorized, "invalid token", nil)
+				httputil.WriteError(w, http.StatusUnauthorized, "authentication required, please login", nil)
 				return
 			}
-			ctx := context.WithValue(r.Context(), ctxUserID, userID)
+			
+			refreshUserID, refreshEmail, refreshTokenType, err := a.jwt.Parse(refreshCookie.Value)
+			if err != nil || refreshTokenType != auth.TokenTypeRefresh {
+				httputil.WriteError(w, http.StatusUnauthorized, "session expired, please login again", nil)
+				return
+			}
+			
+			newAccessToken, err := a.jwt.Sign(refreshUserID, refreshEmail, auth.TokenTypeAccess)
+			if err != nil {
+				httputil.WriteError(w, http.StatusInternalServerError, "failed to refresh token", nil)
+				return
+			}
+			
+
+			a.setAccessTokenCookie(w, auth.TokenTypeAccess, newAccessToken)
+			
+			ctx := context.WithValue(r.Context(), ctxUserID, refreshUserID)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+func (a *AuthMiddleware) setAccessTokenCookie(w http.ResponseWriter, tokenType auth.TokenType, accessToken string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "accessToken",
+		Value:    accessToken,
+		Path:     "/",
+		MaxAge:   int(a.jwt.GetTTL(tokenType).Seconds()),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
 }

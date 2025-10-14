@@ -57,7 +57,7 @@ func main() {
 	walletHandler := wallet.NewHTTPHandler(walletService)
 	authHandler := auth.NewHTTPHandler(userService, tokenService,jwt, validator)
 	tokenHandler := token.NewHTTPHandler(tokenService)
-	authMiddleware := httpmw.NewAuthMiddleware(jwt)
+	authMiddleware := httpmw.NewAuthMiddleware(jwt, userService)
 
 	r := httpx.NewRouter(
 		httpx.Deps{

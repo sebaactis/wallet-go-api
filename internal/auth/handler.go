@@ -45,7 +45,8 @@ func (h *HTTPHandler) Login(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteError(w, http.StatusInternalServerError, "cannot generate tokens", nil)
 		return
 	}
-
+	h.setTokenCookie(w, "accessToken", tokens.AccessToken, TokenTypeAccess)
+	h.setTokenCookie(w, "refreshToken", tokens.RefreshToken, TokenTypeRefresh)
 	h.respondWithTokens(w, user, tokens)
 }
 
@@ -145,6 +146,18 @@ func (h *HTTPHandler) handleLoginError(w http.ResponseWriter, ctx context.Contex
 	default:
 		httputil.WriteError(w, http.StatusInternalServerError, "internal error", nil)
 	}
+}
+
+func (h *HTTPHandler) setTokenCookie(w http.ResponseWriter, name string, token string, tokenType TokenType) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     name,
+		Value:    token,
+		Path:     "/",
+		MaxAge:   int(h.jwt.GetTTL(tokenType).Seconds()),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
 }
 
 func (h *HTTPHandler) respondWithTokens(w http.ResponseWriter, user *user.User, tokens *TokenPair) {
