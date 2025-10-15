@@ -59,6 +59,29 @@ func (r *Repository) ExistsByEmail(ctx context.Context, email string) (bool, err
 	return count > 0, nil
 }
 
+func (r *Repository) Update(ctx context.Context, id uint, updates map[string]interface{}) error {
+	result := r.db.WithContext(ctx).
+		Model(&User{}).
+		Where("id = ?", id).
+		Updates(updates)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return errors.New("user not found")
+	}
+
+	return nil
+}
+
+func (r *Repository) UpdatePassword(ctx context.Context, id uint, hashedPassword string) error {
+	return r.Update(ctx, id, map[string]interface{}{
+		"password": hashedPassword,
+	})
+}
+
 func (r *Repository) Delete(ctx context.Context, id uint) error {
 	return r.db.WithContext(ctx).Delete(&User{}, id).Error
 }

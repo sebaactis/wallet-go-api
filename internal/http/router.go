@@ -23,7 +23,7 @@ type Deps struct {
 	RateLimiter    *httpmw.RateLimiter
 	AuthHandler    *auth.HTTPHandler
 	AuthMiddleWare *httpmw.AuthMiddleware
-	TokensHandler *token.HTTPHandler
+	TokensHandler  *token.HTTPHandler
 }
 
 func NewRouter(d Deps) *chi.Mux {
@@ -44,6 +44,8 @@ func NewRouter(d Deps) *chi.Mux {
 		r.Post("/register", d.UserHandler.Create)
 		r.Post("/login", d.AuthHandler.Login)
 		r.Post("/unlock", d.AuthHandler.UnlockUser)
+		r.Get("/recoveryPassword", d.AuthHandler.RecoveryPasswordRequest)
+		r.Post("/updatePasswordRecovery", d.AuthHandler.UpdatePasswordByRecovery)
 		r.Get("/tokens", d.TokensHandler.GetAll)
 
 		// Rutas protegidas:

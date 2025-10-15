@@ -12,14 +12,22 @@ type LoginResponse struct {
 	RefreshToken string `json:"refreshToken"`
 }
 
+type RecoveryPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+type RecoveryPasswordRequestResponse struct {
+	Email string `json:"email"`
+	Token string `json:"token"`
+}
 type UnlockUserReq struct {
 	UserId uint `json:"userId"`
 }
 
-
 type TokenType string
 
 const (
-	TokenTypeAccess  TokenType = "access"
-	TokenTypeRefresh TokenType = "refresh"
+	TokenTypeAccess        TokenType = "access"
+	TokenTypeRefresh       TokenType = "refresh"
+	TokenTypeResetPassword TokenType = "resetPassword"
 )

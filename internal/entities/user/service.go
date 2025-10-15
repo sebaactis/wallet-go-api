@@ -78,3 +78,30 @@ func (s *Service) IncrementLoginAttempt(ctx context.Context, id uint) (int, erro
 func (s *Service) UnlockUser(ctx context.Context, id uint) error {
 	return s.repository.UnlockUser(ctx, id)
 }
+
+func (s *Service) UpdatePasswordByRecovery(ctx context.Context, req UserRecoveryPassword) (*User, error) {
+
+	if fields, ok := s.validator.ValidateStruct(req); !ok {
+		return nil, &validation.ValidationError{Fields: fields}
+	}
+
+	user, err := s.repository.FindByEmail(ctx, req.Email)
+
+	if err != nil {
+		return nil, err
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(strings.TrimSpace(req.Password)), bcrypt.DefaultCost)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.repository.UpdatePassword(ctx, user.ID, string(passwordHash))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}

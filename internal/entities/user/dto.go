@@ -17,6 +17,13 @@ type UserResponse struct {
 	LockedUntil   time.Time `json:"locked_until"`
 }
 
+type UserRecoveryPassword struct {
+	Email           string `json:"email" validate:"required,email,min=6,max=32"`
+	Token           string `json:"token" validate:"required,min=1,max=1000"`
+	Password        string `json:"password" validate:"required,min=8,max=30"`
+	ConfirmPassword string `json:"confirmPassword" validate:"required,min=8,max=30,eqfield=Password"`
+}
+
 func ToResponse(u *User) *UserResponse {
 	return &UserResponse{
 		ID:            u.ID,

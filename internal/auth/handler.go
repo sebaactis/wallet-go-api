@@ -50,6 +50,36 @@ func (h *HTTPHandler) Login(w http.ResponseWriter, r *http.Request) {
 	h.respondWithTokens(w, user, tokens)
 }
 
+func (h *HTTPHandler) RecoveryPasswordRequest(w http.ResponseWriter, r *http.Request) {
+	var req RecoveryPasswordRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid json", nil)
+		return
+	}
+
+	user, err := h.users.GetByEmail(r.Context(), req.Email)
+
+	if err != nil {
+		httputil.WriteError(w, http.StatusNotFound, "user not found", nil)
+		return
+	}
+
+	token, err := h.generateTokenRecovery(r.Context(), user)
+
+	if err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "recovery token generate failed", nil)
+		return
+	}
+
+	response := &RecoveryPasswordRequestResponse{
+		Email: req.Email,
+		Token: *token,
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, response)
+}
+
 func (h *HTTPHandler) UnlockUser(w http.ResponseWriter, r *http.Request) {
 	var req UnlockUserReq
 
@@ -63,7 +93,34 @@ func (h *HTTPHandler) UnlockUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode("User unlocked")
 }
 
-// === MÉTODOS PRIVADOS ===
+func (h *HTTPHandler) UpdatePasswordByRecovery(w http.ResponseWriter, r *http.Request) {
+	var req user.UserRecoveryPassword
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error": "invalid request"}`, http.StatusBadRequest)
+		return
+	}
+
+	if _, _, _, err := h.jwt.ParseResetPassword(req.Token); err != nil {
+		httputil.WriteError(w, http.StatusUnauthorized, err.Error(), nil)
+		return
+	}
+
+	userRecovery, err := h.users.UpdatePasswordByRecovery(r.Context(), (req))
+
+	if err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "update password failed", nil)
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, user.ToResponse(userRecovery))
+
+}
+
+
+
+
+// ==================== MÉTODOS PRIVADOS ====================
 
 func (h *HTTPHandler) parseLoginRequest(r *http.Request) (*LoginRequest, error) {
 	var req LoginRequest
@@ -128,6 +185,23 @@ func (h *HTTPHandler) generateTokens(ctx context.Context, user *user.User) (*Tok
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
+}
+
+func (h *HTTPHandler) generateTokenRecovery(ctx context.Context, user *user.User) (*string, error) {
+
+	recoveryToken, err := h.jwt.Sign(user.ID, user.Email, TokenTypeResetPassword)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err = h.tokens.Create(ctx, &token.TokenRequest{
+		TokenType: string(TokenTypeResetPassword),
+		Token:     recoveryToken,
+	}); err != nil {
+		return nil, err
+	}
+
+	return &recoveryToken, nil
 }
 
 func (h *HTTPHandler) handleLoginError(w http.ResponseWriter, ctx context.Context, err error, user *user.User) {
