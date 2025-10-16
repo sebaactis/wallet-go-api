@@ -19,12 +19,11 @@ func NewHTTPHandler(service *Service) *HTTPHandler {
 	return &HTTPHandler{service: service}
 }
 
-// POST /v1/accounts
 func (h *HTTPHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req CreateAccountRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error": "invalid request"}`, http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "Invalid request", nil)
 		return
 	}
 
@@ -35,7 +34,8 @@ func (h *HTTPHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.UserID != authUser {
-		httputil.WriteError(w, http.StatusForbidden, "forbidden", nil); return
+		httputil.WriteError(w, http.StatusForbidden, "forbidden", nil)
+		return
 	}
 
 	account, err := h.service.Create(r.Context(), &req)
@@ -43,10 +43,9 @@ func (h *HTTPHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrAccountExists):
-			http.Error(w, `{"error":"account already exists for user+currency"}`, http.StatusConflict)
+			httputil.WriteError(w, http.StatusConflict, "Account already exists for user+currency", nil)
 		default:
-			// podría ser user inexistente o validación de currency; mantenemos 400/500 simples por ahora
-			http.Error(w, `{"error":"bad request or internal"}`, http.StatusBadRequest)
+			httputil.WriteError(w, http.StatusConflict, "Bad request or internal", nil)
 		}
 		return
 	}
@@ -55,19 +54,18 @@ func (h *HTTPHandler) Create(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(ToResponse(account))
 }
 
-// GET /v1/accounts/{id}/balance
 func (h *HTTPHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		http.Error(w, `{"error":"invalid id"}`, http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "Invalid ID", nil)
 		return
 	}
 
 	acc, err := h.service.repo.FindByID(r.Context(), uint(id))
 
 	if err != nil {
-		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+		httputil.WriteError(w, http.StatusBadRequest, "The information provided is wrong, check again", nil)
 		return
 	}
 

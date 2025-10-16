@@ -2,6 +2,8 @@ package token
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/sebaactis/wallet-go-api/internal/validation"
 )
@@ -41,4 +43,19 @@ func (s *Service) GetAll(ctx context.Context) ([]*Token, error) {
 		return nil, err
 	}
 	return tokens, nil
+}
+
+func (s *Service) RevokeToken(ctx context.Context, token string) error {
+
+	tokenCheck, err := s.repository.GetByToken(ctx, token)
+
+	if err != nil {
+		return err
+	}
+
+	if tokenCheck.Is_Revoked && tokenCheck.Revoked_Date.Before(time.Now()) {
+		return errors.New("the token is revoked")
+	}
+
+	return s.repository.RevokeToken(ctx, token)
 }

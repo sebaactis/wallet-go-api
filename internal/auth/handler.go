@@ -61,14 +61,14 @@ func (h *HTTPHandler) RecoveryPasswordRequest(w http.ResponseWriter, r *http.Req
 	user, err := h.users.GetByEmail(r.Context(), req.Email)
 
 	if err != nil {
-		httputil.WriteError(w, http.StatusNotFound, "user not found", nil)
+		httputil.WriteError(w, http.StatusOK, "if the mail exists, a recovery link will be sent you", nil)
 		return
 	}
 
 	token, err := h.generateTokenRecovery(r.Context(), user)
 
 	if err != nil {
-		httputil.WriteError(w, http.StatusBadRequest, "recovery token generate failed", nil)
+		httputil.WriteError(w, http.StatusBadRequest, "Token generate failed", nil)
 		return
 	}
 
@@ -109,7 +109,7 @@ func (h *HTTPHandler) UpdatePasswordByRecovery(w http.ResponseWriter, r *http.Re
 	userRecovery, err := h.users.UpdatePasswordByRecovery(r.Context(), (req))
 
 	if err != nil {
-		httputil.WriteError(w, http.StatusBadRequest, "update password failed", nil)
+		httputil.WriteError(w, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 

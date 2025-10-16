@@ -11,6 +11,7 @@ import (
 var (
 	ErrAccountExists = errors.New("account already exists for user+currency")
 	ErrUserNotFound  = errors.New("user not found")
+	ErrCurrencyISO = errors.New("currency must be 3-letter ISO code")
 )
 
 type Service struct {
@@ -27,7 +28,7 @@ func (s *Service) Create(ctx context.Context, accountCreate *CreateAccountReques
 	accountCreate.Currency = strings.ToUpper(strings.TrimSpace(accountCreate.Currency))
 
 	if len(accountCreate.Currency) != 3 {
-		return nil, errors.New("currency must be 3-letter ISO code")
+		return nil, ErrCurrencyISO
 	}
 
 	exists, err := s.repo.ExistsByUserAndCurrency(ctx, accountCreate.UserID, accountCreate.Currency)

@@ -5,19 +5,21 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/sebaactis/wallet-go-api/internal/entities/token"
 	"github.com/sebaactis/wallet-go-api/internal/validation"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type Service struct {
-	repository *Repository
-	validator  validation.StructValidator
-	db         *gorm.DB
+	repository  *Repository
+	tokenService *token.Service
+	validator       validation.StructValidator
+	db              *gorm.DB
 }
 
-func NewService(repository *Repository, v validation.StructValidator) *Service {
-	return &Service{repository: repository, db: repository.db, validator: v}
+func NewService(repository *Repository, tokenService *token.Service, v validation.StructValidator) *Service {
+	return &Service{repository: repository, tokenService: tokenService, db: repository.db, validator: v}
 }
 
 func (s *Service) Create(ctx context.Context, user *UserCreate) (*User, error) {
@@ -97,9 +99,11 @@ func (s *Service) UpdatePasswordByRecovery(ctx context.Context, req UserRecovery
 		return nil, err
 	}
 
-	err = s.repository.UpdatePassword(ctx, user.ID, string(passwordHash))
+	if err = s.repository.UpdatePassword(ctx, user.ID, string(passwordHash)); err != nil {
+		return nil, err
+	}
 
-	if err != nil {
+	if err = s.tokenService.RevokeToken(ctx, req.Token); err != nil {
 		return nil, err
 	}
 

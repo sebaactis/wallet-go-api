@@ -45,10 +45,11 @@ func main() {
 	tokenRepo := token.NewRepository(db)
 
 	// Servicios
-	userService := user.NewService(userRepo, validator)
+	
 	accountService := account.NewService(accountRepo)
 	walletService := wallet.NewService(db)
 	tokenService := token.NewService(tokenRepo, validator)
+	userService := user.NewService(userRepo, tokenService, validator)
 
 	// Handlers
 
@@ -57,7 +58,7 @@ func main() {
 	walletHandler := wallet.NewHTTPHandler(walletService)
 	authHandler := auth.NewHTTPHandler(userService, tokenService,jwt, validator)
 	tokenHandler := token.NewHTTPHandler(tokenService)
-	authMiddleware := httpmw.NewAuthMiddleware(jwt, userService)
+	authMiddleware := httpmw.NewAuthMiddleware(jwt, userService, tokenService)
 
 	r := httpx.NewRouter(
 		httpx.Deps{
