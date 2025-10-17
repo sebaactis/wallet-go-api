@@ -89,8 +89,8 @@ func (j *JWT) Sign(userID uint, email string, tokenType TokenType) (string, erro
 	return token.SignedString(secret)
 }
 
-func (j *JWT) Parse(tokenIn string) (uint, string, TokenType, error) {
-	return j.parseWithSecret(tokenIn, j.secret, TokenTypeAccess)
+func (j *JWT) Parse(tokenIn string, tokenType TokenType) (uint, string, TokenType, error) {
+	return j.parseWithSecret(tokenIn, j.secret, tokenType)
 }
 
 func (j *JWT) ParseResetPassword(tokenIn string) (uint, string, TokenType, error) {

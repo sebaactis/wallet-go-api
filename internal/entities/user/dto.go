@@ -1,6 +1,10 @@
 package user
 
-import "time"
+import (
+	"time"
+
+	"github.com/sebaactis/wallet-go-api/internal/httputil"
+)
 
 type UserCreate struct {
 	Name            string `json:"name"  validate:"required,min=5,max=30"`
@@ -15,6 +19,8 @@ type UserResponse struct {
 	Email         string    `json:"email"`
 	LoginAttempts int       `json:"login_attempt"`
 	LockedUntil   time.Time `json:"locked_until"`
+	CreatedAt     string    `json:"created_at"`
+	UpdatedAt     string    `json:"updated_at"`
 }
 
 type UserRecoveryPassword struct {
@@ -31,6 +37,8 @@ func ToResponse(u *User) *UserResponse {
 		Email:         u.Email,
 		LockedUntil:   u.Locked_until,
 		LoginAttempts: u.LoginAttempt,
+		CreatedAt:     httputil.FormatDate(&u.CreatedAt),
+		UpdatedAt:     httputil.FormatDate(&u.UpdatedAt),
 	}
 }
 

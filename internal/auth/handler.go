@@ -176,7 +176,7 @@ func (h *HTTPHandler) generateTokens(ctx context.Context, user *user.User) (*Tok
 
 	if _, err = h.tokens.Create(ctx, &token.TokenRequest{
 		TokenType: string(TokenTypeRefresh),
-		Token:     accessToken,
+		Token:     refreshToken,
 	}); err != nil {
 		return nil, err
 	}
@@ -227,7 +227,7 @@ func (h *HTTPHandler) setTokenCookie(w http.ResponseWriter, name string, token s
 		Name:     name,
 		Value:    token,
 		Path:     "/",
-		MaxAge:   int(h.jwt.GetTTL(tokenType).Seconds()),
+		MaxAge:   int(h.jwt.GetTTL(tokenType).Seconds() * 2),
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
